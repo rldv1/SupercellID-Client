@@ -2,9 +2,7 @@
 
 Since the latest versions of the game, Supercell has added protection against fake requests to their API called Request Forgery Protection (RFP).
 
-> I dont want to see people who are crazy about money get the logic of this protection through disassemblers and sell it for a lot of money.
-> 
-> I sincerely hope that Supercell will notice this repository and take some actions
+> I sincerely hope that Supercell will take some actions
 
 ## What do I highly recommend to Supercell to secure their API?
 - Dont use signing functions in libg, its absurd and unsafe
@@ -13,18 +11,20 @@ Since the latest versions of the game, Supercell has added protection against fa
 - Use PepperCrypto :)
 
 ## How does RFP work?
-#### Example input data:
+#### Before hashing, a string of the following order is collected:
 `1738503470GET/api/rewards/sdk/v1/rewards.statusauthorization=Bearer <exampleToken>user-agent=scid/1.5.8-f (iPadOS 18.2; laser-prod; iPad8,6) com.supercell.laser.K3X97T336N/59.184x-supercell-device-id=5A8F68A1-A0D8-5702-95A8-875CF3F421F8`
-#### Example finished signature:
+#### And this is what it looks like in the final version:
 `RFPv1 Timestamp=1738503470,SignedHeaders=authorization;user-agent;x-supercell-device-id,Signature=nCahKjUPwvOcGQW5tLt7cLZb3Ol6yU3Q_KVFjx7Z5Vc`
-#### Before signing, the following information is collected:
-- Datetime (Seconds since Epoch)
+
+#### Therefore, we can determine exactly what data is collected for hashing:
+- Datetime (secs since epoch)
 - Body
 - Method (POST, GET, etc.)
 - API Path
 - Some headers (User-agent, authorization (bearer), etc.)
+  
 ### Next, go to the `sub_BA8004` (signer) function!
-Remember what I said? This is not secure, such sensitive code cannot be 100% protected JUST by Promon... :/
+Remember what i said? This is not secure, such sensitive code cannot be 100% protected JUST by Promon... :/
 
 #### Let's imagine that you have a Supercell ID menu like this:
 <img width="364" alt="Снимок экрана 2025-02-02 в 22 09 18" src="https://github.com/user-attachments/assets/355c9e76-b6e6-46c7-8883-24603d21ab2b" />
@@ -55,10 +55,10 @@ We see that next comes a jump into something
       &p_dest,
       *((_QWORD *)&v413 + 1) & 0xFFFFFFFFFFFFFFFELL);
 ```
-A simple VTable function, which surprisingly leads to `libg.so` at `sub_BA8004`!
+A simple VTable function, which leads to `libg.so` at `sub_BA8004`!
 
 
-##### Below is my deobfuscated version of this function (i worked on it for about 30 minutes!)
+##### Below is my deobfuscated version of this function:
 ```cpp
 // The function generates a packet signature using:
 // – a string representation of the timestamp (the primary parameter),
@@ -377,20 +377,71 @@ A simple VTable function, which surprisingly leads to `libg.so` at `sub_BA8004`!
     // The result is written to the output buffer (i think that outSignatureBuf is a std::string structure)
     *reinterpret_cast<std::string*>(outSignatureBuf) = authInserted;
     
-    
-    
-    
-    //
-    // 13. Return the final value.
-    // In the original, a long double is returned, which is read from the resulting buffer.
-    // Here we simulate this conversion.
-    //
-    long double result;
-    memcpy(&result, finalSignature.data(), sizeof(result));
-    
-    return result;
 }
 ```
+
+Here is my working crappy Python test script:
+
+```py
+key = bytes.fromhex("ae584daf58a3757be21fb506dfcfc478fad4600e688d5bb6f3e51ccb2ebfc373")
+def hmac_sha256_manual(key: bytes, message: bytes) -> bytes:
+    """
+    manual implementation of HMAC-SHA256, because why not?
+    """
+    block_size = 64 
+    if len(key) > block_size: key = hashlib.sha256(key).digest()
+    if len(key) < block_size: key = key.ljust(block_size, b'\x00')
+
+    ipad = bytes((b ^ 0x36) for b in key)
+    opad = bytes((b ^ 0x5C) for b in key)
+
+    inner = hashlib.sha256(ipad + message).digest()
+    outer = hashlib.sha256(opad + inner).digest()
+    return outer
+
+def RFPv1(data, method, useragent):
+    currenttime = int(time.time())
+
+    signstr = str(currenttime) + "POST" + method + urllib.parse.urlencode(data) + "user-agent=" + useragent + "x-supercell-device-id=<and here too>"
+    
+    result = "RFPv1 Timestamp="
+    result += str(currenttime)
+    result += ",SignedHeaders=user-agent;x-supercell-device-id,"
+
+    sign = base64.b64encode(hmac_sha256_manual(key, signstr.encode())).decode().replace("+", "-").replace("/", "_").replace("=", "")
+    result += "Signature=" + sign
+    
+    return result
+
+data = {
+    "lang": "en",
+    "email": mail,
+    "remember": "true",
+    "game": "laser",
+    "env": "prod",
+    "unified_flow": "LOGIN",
+    "recaptchaToken": "FAILED_EXECUTION",
+    "recaptchaSiteKey": "6Lf3ThsqAAAAABuxaWIkogybKxfxoKxtR-aq5g7l",
+}
+
+encoded_data = urllib.parse.urlencode(data)
+content_length = str(len(encoded_data))
+
+headers = {
+    "accept-encoding": "gzip",
+    "accept-language": "ru",
+    "content-length": content_length,
+    "content-type": "application/x-www-form-urlencoded; charset=utf-8",
+    "host": "id.supercell.com",
+    "user-agent": "scid/1.5.8-f (Android 13; laser-prod; Test) com.supercell.laser/59.184",
+    "x-supercell-device-id": "<pls generate random uuid here>",
+    "x-supercell-request-forgery-protection": RFPv1(data, "/api/ingame/account/login", "scid/1.5.8-f (Android 13; laser-prod; Test) com.supercell.laser/59.184")[0]
+}
+
+response = httpx.post("https://id.supercell.com/api/ingame/account/login", headers=headers, content=encoded_data)
+    
+```
+
 
 
 ## RFP Keys:
