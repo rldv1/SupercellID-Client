@@ -8,7 +8,7 @@ Since the latest versions of the game, Supercell has added protection against fa
 - Dont use signing functions in libg, its absurd and unsafe
 - Instead use obfuscated Dart code, and given that Dart runs in a VM, this will make it extremely difficult to analyze behavior
 - Use custom hashing algorithms, the current implementation of HMAC-SHA256 looks sad
-- Use PepperCrypto :)
+- ~~Use PepperCrypto :)~~
 
 ## How does RFP work?
 #### Before hashing, a string of the following order is collected:
