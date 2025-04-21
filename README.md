@@ -2,14 +2,6 @@
 
 Since the latest versions of the game, Supercell has added protection against fake requests to their API called Request Forgery Protection (RFP).
 
-> I sincerely hope that Supercell will take some actions
-
-## What do I highly recommend to Supercell to secure their API?
-- Dont use signing functions in libg, its absurd and unsafe
-- Instead use obfuscated Dart code, and given that Dart runs in a VM, this will make it extremely difficult to analyze behavior
-- Use custom hashing algorithms, the current implementation of HMAC-SHA256 looks sad
-- ~~Use PepperCrypto :)~~
-
 ## How does RFP work?
 #### Before hashing, a string of the following order is collected:
 `1738503470GET/api/rewards/sdk/v1/rewards.statusauthorization=Bearer <exampleToken>user-agent=scid/1.5.8-f (iPadOS 18.2; laser-prod; iPad8,6) com.supercell.laser.K3X97T336N/59.184x-supercell-device-id=5A8F68A1-A0D8-5702-95A8-875CF3F421F8`
