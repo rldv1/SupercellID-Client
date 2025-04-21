@@ -16,7 +16,7 @@ Since the latest versions of the game, Supercell has added protection against fa
 - Some headers (User-agent, authorization (bearer), etc.)
   
 ### Next, go to the `sub_BA8004` (signer) function!
-Remember what i said? This is not secure, such sensitive code cannot be 100% protected JUST by Promon... :/
+This is not secure, such sensitive code cannot be 100% protected JUST by Promon Shield... :/
 
 #### Let's imagine that you have a Supercell ID menu like this:
 <img width="364" alt="Снимок экрана 2025-02-02 в 22 09 18" src="https://github.com/user-attachments/assets/355c9e76-b6e6-46c7-8883-24603d21ab2b" />
